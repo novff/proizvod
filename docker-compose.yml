@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: support_db
+    environment:
+      POSTGRES_DB: software_support
+      POSTGRES_USER: support_user
+      POSTGRES_PASSWORD: support_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U support_user -d software_support"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+  api:
+    build: .
+    container_name: support_api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://support_user:support_password@db:5432/software_support
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  postgres_data:
